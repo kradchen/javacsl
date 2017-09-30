@@ -793,8 +793,8 @@ public abstract class AbstractQueuedSynchronizer
      * @return {@code true} if thread should block
      */
     private static boolean shouldParkAfterFailedAcquire(Node pred, Node node) {
-        int ws = pred.waitStatus;
-        if (ws == Node.SIGNAL)
+        int ws = pred.waitStatus;//前驱状态
+        if (ws == Node.SIGNAL)//前驱状态为SIGNAL，表示当前驱Release的时候回通知本节点，所以这时候线程就可以休息了
             /*
              * This node has already set status asking a release
              * to signal it, so it can safely park.
@@ -802,8 +802,8 @@ public abstract class AbstractQueuedSynchronizer
             return true;
         if (ws > 0) {
             /*
-             * Predecessor was cancelled. Skip over predecessors and
-             * indicate retry.
+             * 前驱已取消，则不断向前，直至找到未取消的前驱，
+             * 中间取消的节点将会被回收。
              */
             do {
                 node.prev = pred = pred.prev;
@@ -815,6 +815,7 @@ public abstract class AbstractQueuedSynchronizer
              * need a signal, but don't park yet.  Caller will need to
              * retry to make sure it cannot acquire before parking.
              */
+             //前驱正常，则将前驱设置成会通知自己的SIGNAL模式
             compareAndSetWaitStatus(pred, ws, Node.SIGNAL);
         }
         return false;
@@ -833,8 +834,8 @@ public abstract class AbstractQueuedSynchronizer
      * @return {@code true} if interrupted
      */
     private final boolean parkAndCheckInterrupt() {
-        LockSupport.park(this);
-        return Thread.interrupted();
+        LockSupport.park(this);//线程挂起等待唤醒
+        return Thread.interrupted();//如果被唤醒，查看自己是不是被中断的。
     }
 
     /*
@@ -854,20 +855,28 @@ public abstract class AbstractQueuedSynchronizer
      * @param arg the acquire argument
      * @return {@code true} if interrupted while waiting
      */
-    final boolean acquireQueued(final Node node, int arg) {
+    final boolean acquireQueued(final Node node, int arg) {//该方法会在线程队列中，选取一个最前端的可以获得锁的线程，进行获取锁操作
         boolean failed = true;
         try {
             boolean interrupted = false;
-            for (;;) {
-                final Node p = node.predecessor();
+            for (;;) {//自旋以不断检查状态，看看自己是不是老二了。
+                final Node p = node.predecessor();//获取前驱
+                //如果前驱是head，即该结点已成老二，开始不断尝试获取锁权限
                 if (p == head && tryAcquire(arg)) {
-                    setHead(node);
+                    setHead(node);//取得锁权限，成为队列头
                     p.next = null; // help GC
                     failed = false;
-                    return interrupted;
-                }
-                if (shouldParkAfterFailedAcquire(p, node) &&
-                    parkAndCheckInterrupt())
+                    return interrupted;//返回等待过程中是否被中断过
+                }               
+                /*
+                 *  判断获取锁失败后，当前线程是否应该被挂起！
+                 *  p的waitStatus是Signal（代表该线程在等待锁）时，当前线程就会被挂起！
+                 *  如果p是Cancelled状态（大于0），则会向前历遍，直到p的状态不为Cancelled，然后返回false，再次for循环。
+                 *  如果p是其他小于或等于0的状态时，则将p的waitStatus设置为Signal，再次for循环。
+                 *  说白了就是除Cancelled状态的线程最后都会被挂起，Cancelled则会被从队列里去除。
+                 */
+                if (shouldParkAfterFailedAcquire(p, node) && 
+                    parkAndCheckInterrupt())//如果可以被挂起，就进入waiting状态，直到被unpark()
                     interrupted = true;
             }
         } finally {
