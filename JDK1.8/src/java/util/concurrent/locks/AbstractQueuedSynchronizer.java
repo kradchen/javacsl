@@ -563,7 +563,7 @@ public abstract class AbstractQueuedSynchronizer
      */
     protected final boolean compareAndSetState(int expect, int update) {
         // See below for intrinsics setup to support this
-        return unsafe.compareAndSwapInt(this, stateOffset, expect, update);
+        return unsafe.compareAndSwapInt(this, stateOffset, expect, update);//用于设置State值的原子操作
     }
 
     // Queuing utilities
@@ -602,7 +602,7 @@ public abstract class AbstractQueuedSynchronizer
      * @param mode Node.EXCLUSIVE for exclusive, Node.SHARED for shared
      * @return the new node
      */
-    private Node addWaiter(Node mode) {
+    private Node addWaiter(Node mode) {//将节点追加进队列的方法。
         Node node = new Node(Thread.currentThread(), mode);
         // Try the fast path of enq; backup to full enq on failure
         Node pred = tail;
@@ -635,7 +635,7 @@ public abstract class AbstractQueuedSynchronizer
      *
      * @param node the node
      */
-    private void unparkSuccessor(Node node) {
+    private void unparkSuccessor(Node node) {//唤醒继任节点
         /*
          * If status is negative (i.e., possibly needing signal) try
          * to clear in anticipation of signalling.  It is OK if this
