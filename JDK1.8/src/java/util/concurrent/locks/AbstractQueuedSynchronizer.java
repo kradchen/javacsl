@@ -1,38 +1,3 @@
-/*
- * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- */
-
-/*
- *
- *
- *
- *
- *
- * Written by Doug Lea with assistance from members of JCP JSR-166
- * Expert Group and released to the public domain, as explained at
- * http://creativecommons.org/publicdomain/zero/1.0/
- */
-
 package java.util.concurrent.locks;
 import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
@@ -668,6 +633,10 @@ public abstract class AbstractQueuedSynchronizer
      * to calling unparkSuccessor of head if it needs signal.)
      */
     private void doReleaseShared() {
+        /* 这个函数比较特殊，他不考虑其他线程是否正在获取或释放锁，单纯只是
+         * 向下扩散唤醒Head的后继者，由于使用了CAS，而其他操作都是读操作，
+         * 所以无所谓线程交互问题，这是一种无锁线程交互的思路!
+         */
         /*
          * Ensure that a release propagates, even if there are other
          * in-progress acquires/releases.  This proceeds in the usual
